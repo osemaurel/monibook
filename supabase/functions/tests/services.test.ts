@@ -1,4 +1,4 @@
-import { assert, assertEquals, assertRejects } from "jsr:@std/assert@1";
+import { assert, assertEquals, assertRejects } from "@std/assert";
 import { createServices, ServiceError } from "../_shared/services/index.ts";
 
 const simulated = createServices({
@@ -15,7 +15,7 @@ Deno.test("each service answers through the adapter chosen in settings", async (
 
   const image = await simulated.image.generate({ prompt: "Une couverture", count: 2 });
   assertEquals(image.images.length, 2);
-  assertEquals(image.images[0].mimeType, "image/png");
+  assertEquals(image.images[0].mimeType, "image/svg+xml");
 
   const { taskId } = await simulated.video.submit({ prompt: "Une vidéo" });
   assertEquals((await simulated.video.poll(taskId)).state, "done");

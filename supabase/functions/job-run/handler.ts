@@ -1,5 +1,6 @@
 import { z } from "../_shared/deps.ts";
 import { errorResponse, json, readJson } from "../_shared/http.ts";
+import type { RunOutcome } from "../_shared/jobs/runner.ts";
 import type { ClaimedJob } from "../_shared/jobs/types.ts";
 
 export const MAX_JOBS_PER_RUN = 5;
@@ -10,7 +11,9 @@ export interface JobRunDeps {
   verifySecret(secret: string): Promise<boolean>;
   recoverStaleJobs(): Promise<number>;
   claimJobs(limit: number): Promise<ClaimedJob[]>;
-  runJob(job: ClaimedJob): Promise<void>;
+  runJob(job: ClaimedJob): Promise<RunOutcome>;
+  /** Starts the next worker invocation, used when a long job handed over. */
+  kick(): Promise<void>;
   /** Keeps the worker alive after the response so cron's short HTTP timeout is not an issue. */
   waitUntil(work: Promise<unknown>): void;
 }
@@ -31,7 +34,11 @@ export function createJobRunHandler(deps: JobRunDeps) {
     const recovered = await deps.recoverStaleJobs();
     const jobs = await deps.claimJobs(MAX_JOBS_PER_RUN);
     if (jobs.length > 0) {
-      deps.waitUntil(Promise.allSettled(jobs.map((job) => deps.runJob(job))));
+      deps.waitUntil(
+        Promise.allSettled(jobs.map((job) => deps.runJob(job))).then(async (results) => {
+          if (results.some((r) => r.status === "fulfilled" && r.value === "yielded")) await deps.kick();
+        }),
+      );
     }
     return json({ recovered, claimed: jobs.length }, 202);
   };

@@ -38,7 +38,8 @@ function next(state: FakeState, key: string): number {
 }
 
 function sentences(state: FakeState, count: number): string {
-  return Array.from({ length: count }, () => SENTENCES[(next(state, "sentence") - 1) % SENTENCES.length]).join(" ");
+  return Array.from({ length: count }, () => SENTENCES[(next(state, "sentence") - 1) % SENTENCES.length])
+    .join(" ");
 }
 
 function chapterContent(state: FakeState): string {
@@ -65,8 +66,9 @@ function fakeString(key: string, schema: Schema, state: FakeState): string {
   if (name === "content") value = chapterContent(state);
   else if (name.includes("title")) value = `Titre simulé ${next(state, "title")}`;
   else if (name.includes("term")) value = `Notion ${next(state, "term")}`;
-  else if (name.includes("summary") || name.includes("brief") || name.includes("profile")) value = sentences(state, 3);
-  else value = sentences(state, 2);
+  else if (name.includes("summary") || name.includes("brief") || name.includes("profile")) {
+    value = sentences(state, 4);
+  } else value = sentences(state, 2);
   const max = typeof schema.maxLength === "number" ? schema.maxLength : undefined;
   return max ? value.slice(0, max) : value;
 }

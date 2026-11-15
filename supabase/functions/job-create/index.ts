@@ -1,11 +1,15 @@
-import { JOB_KINDS } from "../_shared/jobs/registry.ts";
+import { JOB_INPUTS } from "../_shared/jobs/inputs.ts";
 import { authenticatedUserId, createAdminClient, sqlErrorCode } from "../_shared/supabase.ts";
 import { createJobCreateHandler, CreateJobRejected } from "./handler.ts";
 
 const admin = createAdminClient();
 
 Deno.serve(createJobCreateHandler({
-  kinds: JOB_KINDS,
+  inputs: JOB_INPUTS,
+  async kick() {
+    const { error } = await admin.rpc("kick_job_runner");
+    if (error) throw new Error(error.message);
+  },
   authenticate: (req) => authenticatedUserId(req, admin),
   async createJob(userId, projectId, kind, input) {
     const { data, error } = await admin.rpc("create_job", {

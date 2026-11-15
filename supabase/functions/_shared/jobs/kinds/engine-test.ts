@@ -1,5 +1,5 @@
-import { z } from "../../deps.ts";
 import { JobError } from "../errors.ts";
+import { EngineTestInput } from "../inputs.ts";
 import { defineJobKind } from "../types.ts";
 
 const STEPS = [
@@ -15,10 +15,7 @@ const FAILING_STEP = 2;
 
 /** Waits 30 seconds in six steps and returns a text: exercises the whole job cycle for free. */
 export const engineTest = defineJobKind({
-  input: z.object({
-    topic: z.string().trim().min(1).max(200),
-    simulate_failure: z.enum(["none", "first_attempt", "always"]).default("none"),
-  }),
+  input: EngineTestInput,
 
   async run(input, ctx) {
     const fails = input.simulate_failure === "always" ||

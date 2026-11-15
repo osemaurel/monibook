@@ -40,7 +40,15 @@ export function createSupabaseJobStore(admin: SupabaseClient): JobStore {
         p_retryable: error.retryable,
       });
     },
+    async yieldJob(jobId, attempt) {
+      await call(admin, "yield_job", { p_job_id: jobId, p_attempt: attempt });
+    },
   };
+}
+
+/** Asks the database to call job-run now rather than at the next cron tick. */
+export async function kickRunner(admin: SupabaseClient): Promise<void> {
+  await call(admin, "kick_job_runner", {});
 }
 
 export async function claimJobs(admin: SupabaseClient, limit: number): Promise<ClaimedJob[]> {

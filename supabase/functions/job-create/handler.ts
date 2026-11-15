@@ -1,6 +1,5 @@
 import { z } from "../_shared/deps.ts";
 import { corsHeaders, errorResponse, json, readJson } from "../_shared/http.ts";
-import type { JobKindDefinition } from "../_shared/jobs/types.ts";
 
 const Body = z.strictObject({
   kind: z.string().regex(/^[a-z][a-z0-9_]{1,62}$/),
@@ -18,8 +17,10 @@ export interface JobCreateDeps {
   /** User id from the verified bearer token, or null. Never from the body. */
   authenticate(req: Request): Promise<string | null>;
   createJob(userId: string, projectId: string, kind: string, input: unknown): Promise<{ id: string }>;
-  // deno-lint-ignore no-explicit-any
-  kinds: Record<string, JobKindDefinition<any>>;
+  /** Input schema of each job kind. */
+  inputs: Record<string, z.ZodType>;
+  /** Starts a worker at once; failures are harmless, the cron picks the job up anyway. */
+  kick(): Promise<void>;
 }
 
 const REJECTIONS: Record<string, [number, string]> = {
@@ -45,18 +46,19 @@ export function createJobCreateHandler(deps: JobCreateDeps) {
       return errorResponse(400, "invalid_request", "La demande envoyée est invalide.");
     }
 
-    const definition = deps.kinds[body.data.kind];
-    if (!definition) {
+    const schema = deps.inputs[body.data.kind];
+    if (!schema) {
       return errorResponse(400, "unknown_job_kind", REJECTIONS.unknown_job_kind[1]);
     }
 
-    const input = definition.input.safeParse(body.data.input ?? {});
+    const input = schema.safeParse(body.data.input ?? {});
     if (!input.success) {
       return errorResponse(400, "invalid_input", "Les informations envoyées sont incomplètes ou invalides.");
     }
 
     try {
       const job = await deps.createJob(userId, body.data.project_id, body.data.kind, input.data);
+      await deps.kick().catch((error) => console.error("kick failed", error));
       return json({ job_id: job.id }, 201);
     } catch (error) {
       if (error instanceof CreateJobRejected && REJECTIONS[error.code]) {

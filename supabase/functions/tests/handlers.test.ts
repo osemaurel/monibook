@@ -1,5 +1,5 @@
-import { assert, assertEquals } from "jsr:@std/assert@1";
-import { JOB_KINDS } from "../_shared/jobs/registry.ts";
+import { assert, assertEquals } from "@std/assert";
+import { JOB_INPUTS } from "../_shared/jobs/inputs.ts";
 import type { ClaimedJob } from "../_shared/jobs/types.ts";
 import { createJobCreateHandler, CreateJobRejected } from "../job-create/handler.ts";
 import { createJobRunHandler, MAX_JOBS_PER_RUN } from "../job-run/handler.ts";
@@ -19,15 +19,20 @@ function jobCreate(
   createJob = (_u: string, _p: string, _k: string, _i: unknown) => Promise.resolve({ id: "job-1" }),
 ) {
   const calls: unknown[][] = [];
+  const kicks: number[] = [];
   const handler = createJobCreateHandler({
-    kinds: JOB_KINDS,
+    inputs: JOB_INPUTS,
+    kick: () => {
+      kicks.push(1);
+      return Promise.resolve();
+    },
     authenticate: (req) => Promise.resolve(req.headers.get("Authorization") === "Bearer valid" ? USER : null),
     createJob: (...args) => {
       calls.push(args);
       return createJob(...args);
     },
   });
-  return { handler, calls };
+  return { handler, calls, kicks };
 }
 
 const auth = { Authorization: "Bearer valid" };
@@ -43,6 +48,42 @@ Deno.test("job-create: identity comes from the token only", async () => {
   assertEquals(res.status, 201);
   assertEquals(await res.json(), { job_id: "job-1" });
   assertEquals(calls[0], [USER, PROJECT, "engine_test", { topic: "Cuisine", simulate_failure: "none" }]);
+});
+
+Deno.test("job-create: wakes a worker after creating the job, and survives a failed wake-up", async () => {
+  const { handler, kicks } = jobCreate();
+  assertEquals((await handler(post(validBody, auth))).status, 201);
+  assertEquals(kicks.length, 1);
+
+  const failing = createJobCreateHandler({
+    inputs: JOB_INPUTS,
+    kick: () => Promise.reject(new Error("network")),
+    authenticate: () => Promise.resolve(USER),
+    createJob: () => Promise.resolve({ id: "job-2" }),
+  });
+  assertEquals((await failing(post(validBody, auth))).status, 201);
+});
+
+Deno.test("job-create: ebook kinds accept only their own identifiers", async () => {
+  const { handler, calls } = jobCreate();
+  const ebookId = crypto.randomUUID();
+  assertEquals(
+    (await handler(post({ kind: "ebook_titles", project_id: PROJECT, input: { ebook_id: ebookId } }, auth)))
+      .status,
+    201,
+  );
+  assertEquals(
+    (await handler(post({ kind: "ebook_titles", project_id: PROJECT, input: { ebook_id: "x" } }, auth)))
+      .status,
+    400,
+  );
+  assertEquals(
+    (await handler(
+      post({ kind: "ebook_titles", project_id: PROJECT, input: { ebook_id: ebookId, user_id: USER } }, auth),
+    )).status,
+    400,
+  );
+  assertEquals(calls.length, 1);
 });
 
 Deno.test("job-create: inputs are validated with zod before any write", async () => {
@@ -100,6 +141,10 @@ Deno.test("job-run: requires the runner secret, then recovers, claims and runs i
     },
     runJob: (job) => {
       events.push(`run:${job.id}`);
+      return Promise.resolve("completed" as const);
+    },
+    kick: () => {
+      events.push("kick");
       return Promise.resolve();
     },
     waitUntil: (work) => {
@@ -116,4 +161,33 @@ Deno.test("job-run: requires the runner secret, then recovers, claims and runs i
   assertEquals(await res.json(), { recovered: 2, claimed: 1 });
   await background;
   assertEquals(events, ["recover", `claim:${MAX_JOBS_PER_RUN}`, `run:${claimed[0].id}`]);
+});
+
+Deno.test("job-run: a job that handed over triggers the next worker at once", async () => {
+  const events: string[] = [];
+  let background: Promise<unknown> | undefined;
+  const handler = createJobRunHandler({
+    verifySecret: () => Promise.resolve(true),
+    recoverStaleJobs: () => Promise.resolve(0),
+    claimJobs: () =>
+      Promise.resolve([{
+        id: crypto.randomUUID(),
+        user_id: USER,
+        project_id: PROJECT,
+        kind: "ebook_write_short",
+        input: {},
+        attempts: 1,
+      }]),
+    runJob: () => Promise.resolve("yielded" as const),
+    kick: () => {
+      events.push("kick");
+      return Promise.resolve();
+    },
+    waitUntil: (work) => {
+      background = work;
+    },
+  });
+  await handler(post({}, { "x-job-runner-secret": "s" }));
+  await background;
+  assertEquals(events, ["kick"]);
 });

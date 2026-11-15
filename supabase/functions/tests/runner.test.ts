@@ -1,10 +1,11 @@
-import { assert, assertEquals } from "jsr:@std/assert@1";
+import { assert, assertEquals } from "@std/assert";
 import { z } from "../_shared/deps.ts";
 import { JOB_ERROR_MESSAGES, type JobError, JobFencedError } from "../_shared/jobs/errors.ts";
 import { JOB_KINDS } from "../_shared/jobs/registry.ts";
 import { type JobStore, runJob } from "../_shared/jobs/runner.ts";
 import { type ClaimedJob, defineJobKind } from "../_shared/jobs/types.ts";
 import { createServices, ServiceError } from "../_shared/services/index.ts";
+import { dataAccess } from "./fakes.ts";
 
 interface Recorded {
   progress: Array<[number, string]>;
@@ -31,6 +32,9 @@ function fakeStore(options: { fenceProgressAt?: number } = {}): JobStore & { rec
       recorded.failed = { code: error.code, retryable: error.retryable, message };
       return Promise.resolve();
     },
+    yieldJob() {
+      return Promise.resolve();
+    },
   };
 }
 
@@ -50,7 +54,9 @@ async function run(claimed: ClaimedJob, store: JobStore, kinds = JOB_KINDS) {
   await runJob(claimed, {
     store,
     services: createServices({ text: "simulation" }),
+    data: dataAccess(),
     kinds,
+    now: () => 0,
     sleep: (ms) => {
       slept.push(ms);
       return Promise.resolve();
