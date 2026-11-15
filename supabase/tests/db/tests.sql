@@ -67,9 +67,11 @@ select test.expect_error($$update public.settings set value = '{"engine_test": "
 select test.expect_error($$update public.settings set value = '{"Bad Kind": 5}' where key = 'credit_costs'$$, 'settings_credit_costs_shape');
 select test.expect_error($$update public.settings set value = '{"music": "x"}' where key = 'providers'$$, 'settings_providers_shape');
 select test.expect_error($$update public.settings set value = '{"text": 3}' where key = 'providers'$$, 'settings_providers_shape');
-update public.settings set value = '{"engine_test": 5, "other_kind": 7}' where key = 'credit_costs';
+update public.settings set value = value || '{"other_kind": 7}' where key = 'credit_costs';
 select test.check(
-  (select count(*) from public.audit_log where action = 'settings.update' and details ->> 'key' = 'credit_costs') = 1,
+  (select count(*) from public.audit_log
+   where action = 'settings.update' and details ->> 'key' = 'credit_costs'
+     and details -> 'new' ? 'other_kind' and not details -> 'old' ? 'other_kind') = 1,
   'price change is audited with old and new values');
 
 -- ===== Projects
@@ -291,5 +293,120 @@ select test.check(
 select set_config('request.jwt.claims', json_build_object('sub', :'B')::text, false);
 select test.check((select count(*) from public.project_overview) = 1, 'B sees only own project in overview');
 reset role;
+
+-- ===== Ebooks (phase 3)
+set role authenticated;
+select set_config('request.jwt.claims', json_build_object('sub', :'A')::text, false);
+select test.expect_error(format($$insert into public.ebooks (project_id, subject, step) values (%L, 'Sujet', 2)$$, :'P'), 'ebook_step_incomplete');
+insert into public.ebooks (project_id, subject, template, step) values (:'P', 'Cuisine rapide', 'method_guide', 2);
+select id as "E" from public.ebooks where project_id = :'P' \gset
+select test.check((select user_id = auth.uid() and step = 2 from public.ebooks where id = :'E'), 'ebook created at step 2 for its owner');
+select test.expect_error(format($$insert into public.ebooks (project_id, subject, template) values (%L, 'x', 'free')$$, :'P'), 'duplicate key');
+select test.expect_error(format($$update public.ebooks set step = 3 where id = %L$$, :'E'), 'ebook_step_incomplete');
+select test.expect_error(format($$update public.ebooks set title_proposals = '["x"]' where id = %L$$, :'E'), 'permission denied');
+select test.expect_error(format($$update public.ebooks set bible = '{}' where id = %L$$, :'E'), 'permission denied');
+update public.ebooks set title = 'Cuisiner en 15 minutes', step = 3 where id = :'E';
+select test.expect_error(format($$update public.ebooks set step = 4 where id = %L$$, :'E'), 'ebook_step_incomplete');
+update public.ebooks set summary = 'Un guide pratique.', step = 4 where id = :'E';
+select test.expect_error(format($$update public.ebooks set step = 5, length = 'short' where id = %L$$, :'E'), 'ebook_step_incomplete');
+update public.ebooks set length = 'short', tone = 'Chaleureux', author_name = 'Awa', step = 5 where id = :'E';
+select test.expect_error(format($$update public.ebooks set step = 6 where id = %L$$, :'E'), 'ebook_step_incomplete');
+
+insert into public.ebook_chapters (ebook_id, position, title, brief) values
+  (:'E', 1, 'Les bases', 'Matériel et principes'),
+  (:'E', 2, 'Les recettes', 'Dix recettes'),
+  (:'E', 3, 'Organiser sa semaine', 'Planification');
+select test.check(
+  (select bool_and(status = 'pending' and word_count = 0 and user_id = auth.uid()) from public.ebook_chapters where ebook_id = :'E'),
+  'outline chapters start pending, owned by the user');
+update public.ebooks set step = 6 where id = :'E';
+update public.ebook_chapters set content = 'un deux trois' where ebook_id = :'E' and position = 1;
+select test.check((select status = 'written' and word_count = 3 from public.ebook_chapters where ebook_id = :'E' and position = 1), 'manual content -> written, words counted');
+update public.ebook_chapters set content = '' where ebook_id = :'E' and position = 1;
+select test.check((select status = 'pending' and word_count = 0 from public.ebook_chapters where ebook_id = :'E' and position = 1), 'emptied chapter -> pending');
+select test.expect_error(format($$update public.ebook_chapters set summary = 'x' where ebook_id = %L$$, :'E'), 'permission denied');
+
+select array_agg(id order by position desc) as "REV" from public.ebook_chapters where ebook_id = :'E' \gset
+select public.reorder_ebook_chapters(:'E', :'REV'::uuid[]);
+select test.check(
+  (select string_agg(title, ' | ' order by position) from public.ebook_chapters where ebook_id = :'E') = 'Organiser sa semaine | Les recettes | Les bases',
+  'chapters reordered in one statement');
+select test.expect_error(format($$select public.reorder_ebook_chapters(%L, array[(select id from public.ebook_chapters where ebook_id = %L limit 1)])$$, :'E', :'E'), 'invalid_chapter_order');
+
+select set_config('request.jwt.claims', json_build_object('sub', :'B')::text, false);
+select test.check((select count(*) from public.ebooks) = 0 and (select count(*) from public.ebook_chapters) = 0, 'B sees no ebook of A');
+select test.expect_error(format($$select public.reorder_ebook_chapters(%L, %L::uuid[])$$, :'E', :'REV'), 'invalid_chapter_order');
+select test.expect_error(format($$insert into public.ebook_chapters (ebook_id, position, title) values (%L, 9, 'intrus')$$, :'E'), 'row-level security|foreign key');
+
+-- Writing starts: the bible locks what the text is written from
+reset role;
+set role service_role;
+update public.ebooks set bible = '{"promise": "x"}' where id = :'E';
+set role authenticated;
+select set_config('request.jwt.claims', json_build_object('sub', :'A')::text, false);
+select test.expect_error(format($$update public.ebooks set subject = 'Autre sujet' where id = %L$$, :'E'), 'ebook_locked');
+select test.expect_error(format($$update public.ebooks set length = 'complete' where id = %L$$, :'E'), 'ebook_locked');
+update public.ebooks set title = 'Cuisiner vite et bien' where id = :'E';
+select test.expect_error(format($$update public.ebooks set step = 7 where id = %L$$, :'E'), 'ebook_step_incomplete');
+reset role;
+set role service_role;
+update public.ebooks set written_at = now() where id = :'E';
+set role authenticated;
+select set_config('request.jwt.claims', json_build_object('sub', :'A')::text, false);
+update public.ebooks set step = 7 where id = :'E';
+select test.expect_error(format($$update public.ebooks set cover_path = '%s/%s/ebook/covers/none.svg' where id = %L$$, :'A', :'P', :'E'), 'invalid_cover');
+reset role;
+insert into public.assets (user_id, project_id, kind, storage_path, mime_type)
+values (:'A', :'P', 'image', :'A' || '/' || :'P' || '/ebook/covers/c1.svg', 'image/svg+xml');
+set role authenticated;
+select set_config('request.jwt.claims', json_build_object('sub', :'A')::text, false);
+update public.ebooks set cover_path = :'A' || '/' || :'P' || '/ebook/covers/c1.svg', step = 8 where id = :'E';
+update public.ebooks set step = 9, export_template = 'elegant' where id = :'E';
+select test.check((select step = 9 from public.ebooks where id = :'E'), 'all nine steps validated in order');
+delete from public.ebook_chapters where ebook_id = :'E' and title = 'Les recettes';
+select test.check((select count(*) from public.ebook_chapters where ebook_id = :'E') = 2, 'owner deletes a chapter');
+reset role;
+
+-- Long jobs hand over without consuming an attempt
+set role service_role;
+select (public.create_job(:'A', :'P', 'engine_test')).id as "J6" \gset
+select count(*) as c from public.claim_jobs(20) \gset
+select test.check((select attempts from public.jobs where id = :'J6') = 1, 'long job claimed as attempt 1');
+select public.set_job_progress(:'J6', 1, 40, 'Chapitre 3 sur 8');
+select test.expect_error(format($$select public.yield_job(%L, 2)$$, :'J6'), 'job_not_active');
+select (public.yield_job(:'J6', 1)).status as yielded \gset
+select test.check((select status = 'queued' and continuation and heartbeat_at is null from public.jobs where id = :'J6'), 'yield requeues as a continuation');
+select test.check((select count(*) from public.claim_jobs(5) where id = :'J6') = 1, 'continuation claimed right away');
+select test.check(
+  (select attempts = 1 and progress = 40 and step = 'Chapitre 3 sur 8' and not continuation from public.jobs where id = :'J6'),
+  'continuation keeps attempt, progress and step');
+select public.fail_job(:'J6', 1, 'generation_failed', 'x', true) is not null as f \gset
+select test.check((select status = 'queued' and not continuation from public.jobs where id = :'J6'), 'a failure is a fresh attempt, not a continuation');
+reset role;
+update public.jobs set attempts = 3, run_after = now(), status = 'running', heartbeat_at = now() where id = :'J6';
+set role service_role;
+select (public.yield_job(:'J6', 3)).status as y3 \gset
+select test.check((select count(*) from public.claim_jobs(5) where id = :'J6') = 1, 'a continuation is claimed even at the last attempt');
+select test.check((select attempts from public.jobs where id = :'J6') = 3, 'last attempt not exceeded');
+select public.complete_job(:'J6', 3, '{}') is not null as done6 \gset
+
+select (public.create_job(:'A', :'P', 'engine_test')).id as "J7" \gset
+reset role;
+select count(*) as before_kick from net.calls \gset
+set role service_role;
+select public.kick_job_runner();
+reset role;
+select test.check((select count(*) from net.calls) = :before_kick + 1, 'kick dispatches the runner at once when work is queued');
+set role authenticated;
+select set_config('request.jwt.claims', json_build_object('sub', :'A')::text, false);
+select test.expect_error($$select public.kick_job_runner()$$, 'permission denied');
+select test.expect_error(format($$select public.yield_job(%L, 1)$$, :'J7'), 'permission denied');
+select test.check(
+  (select (value ->> 'ebook_write_standard')::int = 30 and (value ->> 'ebook_titles')::int = 1 from public.settings where key = 'credit_costs'),
+  'ebook generations are priced in settings');
+reset role;
+select test.check(
+  (select count(*) from pg_publication_tables where pubname = 'supabase_realtime' and tablename in ('ebooks', 'ebook_chapters')) = 2,
+  'ebooks and chapters published to realtime');
 
 \echo ALL TESTS PASSED
