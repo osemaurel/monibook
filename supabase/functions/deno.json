@@ -1,0 +1,9 @@
+{
+  "fmt": {
+    "lineWidth": 110
+  },
+  "tasks": {
+    "check": "deno check job-create/index.ts job-run/index.ts tests/",
+    "test": "deno test --allow-env tests/"
+  }
+}
