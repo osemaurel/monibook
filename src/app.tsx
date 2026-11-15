@@ -2,13 +2,7 @@ import { createBrowserRouter, Link } from "react-router";
 import { AppShell } from "@/components/app-shell";
 import { RequireAccess, RequireAuth } from "@/features/auth/guards";
 import { LoginPage } from "@/features/auth/login-page";
-import { CreditHistoryPage } from "@/features/credits/credit-history-page";
-import { DashboardPage } from "@/features/dashboard/dashboard-page";
-import { JobPage } from "@/features/jobs/job-page";
 import { ProjectProvider } from "@/features/projects/project-context";
-import { EditProjectPage, NewProjectPage } from "@/features/projects/project-edit-pages";
-import { ProjectPage } from "@/features/projects/project-page";
-import { ProjectsPage } from "@/features/projects/projects-page";
 
 function NotFound() {
   return (
@@ -19,6 +13,7 @@ function NotFound() {
   );
 }
 
+// Screens are downloaded on demand to keep the first load light on slow connections.
 export const router = createBrowserRouter([
   { path: "/connexion", element: <LoginPage /> },
   {
@@ -28,19 +23,42 @@ export const router = createBrowserRouter([
       children: [{
         element: <AppShell />,
         children: [
-          { index: true, element: <DashboardPage /> },
-          { path: "projets", element: <ProjectsPage /> },
-          { path: "projets/nouveau", element: <NewProjectPage /> },
+          {
+            index: true,
+            lazy: async () => ({ Component: (await import("@/features/dashboard/dashboard-page")).DashboardPage }),
+          },
+          {
+            path: "projets",
+            lazy: async () => ({ Component: (await import("@/features/projects/projects-page")).ProjectsPage }),
+          },
+          {
+            path: "projets/nouveau",
+            lazy: async () => ({ Component: (await import("@/features/projects/project-edit-pages")).NewProjectPage }),
+          },
           {
             path: "projets/:projectId",
             element: <ProjectProvider />,
             children: [
-              { index: true, element: <ProjectPage /> },
-              { path: "modifier", element: <EditProjectPage /> },
-              { path: "generations/:jobId", element: <JobPage /> },
+              {
+                index: true,
+                lazy: async () => ({ Component: (await import("@/features/projects/project-page")).ProjectPage }),
+              },
+              {
+                path: "modifier",
+                lazy: async () => ({
+                  Component: (await import("@/features/projects/project-edit-pages")).EditProjectPage,
+                }),
+              },
+              {
+                path: "generations/:jobId",
+                lazy: async () => ({ Component: (await import("@/features/jobs/job-page")).JobPage }),
+              },
             ],
           },
-          { path: "credits", element: <CreditHistoryPage /> },
+          {
+            path: "credits",
+            lazy: async () => ({ Component: (await import("@/features/credits/credit-history-page")).CreditHistoryPage }),
+          },
           { path: "*", element: <NotFound /> },
         ],
       }],

@@ -42,10 +42,10 @@ export function JobProgress({ job, href, className }: { job: JobView; href?: str
         <Badge variant={status.variant}>{status.label}</Badge>
       </div>
 
-      {job.status !== "failed" && (
+      {(job.status === "running" || job.status === "done") && (
         <div className="flex items-center gap-3">
           <Progress value={job.progress} aria-label="Progression" className="h-2" />
-          <span className="w-10 shrink-0 text-right text-sm tabular-nums">{job.progress} %</span>
+          <span className="w-14 shrink-0 text-right text-sm whitespace-nowrap tabular-nums">{job.progress} %</span>
         </div>
       )}
 

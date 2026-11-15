@@ -8,7 +8,7 @@ import { useJob } from "@/features/jobs/use-job";
 import { useActiveJobs } from "@/features/jobs/use-jobs";
 import { ProjectCard } from "@/features/projects/project-card";
 import { useProjects, useProjectsInProgressCount } from "@/features/projects/use-projects";
-import { formatCredits, formatInteger } from "@/lib/format";
+import { formatInteger } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 function Counter({ label, value, href }: { label: string; value: string | undefined; href?: string }) {
@@ -52,7 +52,7 @@ export function DashboardPage() {
       <div className="grid grid-cols-3 gap-2">
         <Counter label="Projets en cours" value={inProgressCount.data?.toString()} href="/projets" />
         <Counter label="Générations en cours" value={activeJobs.data ? formatInteger(activeJobs.data.count) : undefined} />
-        <Counter label="Solde" value={balance.data ? formatCredits(balance.data.available) : undefined} href="/credits" />
+        <Counter label="Crédits disponibles" value={balance.data ? formatInteger(balance.data.available) : undefined} href="/credits" />
       </div>
 
       {projects.isSuccess && (

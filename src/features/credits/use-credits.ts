@@ -1,10 +1,18 @@
 import { useQuery } from "@tanstack/react-query";
-import { z } from "zod";
 import { queryKeys } from "@/lib/query-client";
 import { supabase } from "@/lib/supabase";
 
-const CreditCosts = z.record(z.string(), z.number().int().positive());
-export type CreditCosts = z.infer<typeof CreditCosts>;
+export type CreditCosts = Record<string, number>;
+
+// Kept free of zod: this hook is part of the first load.
+function parseCreditCosts(value: unknown): CreditCosts {
+  if (typeof value !== "object" || value === null) return {};
+  return Object.fromEntries(
+    Object.entries(value).filter((entry): entry is [string, number] =>
+      Number.isInteger(entry[1]) && (entry[1] as number) > 0
+    ),
+  );
+}
 
 export function useBalance() {
   return useQuery({
@@ -29,7 +37,7 @@ export function useCreditCosts() {
         .eq("key", "credit_costs")
         .maybeSingle();
       if (error) throw error;
-      return CreditCosts.parse(data?.value ?? {});
+      return parseCreditCosts(data?.value);
     },
   });
 }

@@ -90,3 +90,24 @@ Ces règles ne se négocient pas. Un code qui en viole une est un bug.
 - Montants et crédits en entiers, jamais en flottant.
 - Toute opération sur l'argent est atomique et journalisée dans
   `audit_log`.
+
+## 5. Repères techniques
+
+- Barème et choix des fournisseurs : table `settings` (`credit_costs`
+  lisible par le client, `providers` réservé au serveur). Un type de job
+  sans prix dans `credit_costs` ne peut pas être lancé.
+- Crédits et jobs ne bougent que par les fonctions SQL `create_job`,
+  `claim_jobs`, `set_job_progress`, `complete_job`, `fail_job`,
+  `recover_stale_jobs` (rôle service uniquement). Ne jamais écrire
+  directement dans `jobs` ou `credit_transactions`.
+- Fournisseurs : `supabase/functions/_shared/services/<service>/`. Un
+  adaptateur par fournisseur, déclaré dans le `index.ts` du service ; ses
+  clés sont des secrets d'Edge Function.
+- Ajouter un module de génération : un exécuteur dans
+  `_shared/jobs/kinds/` déclaré dans `registry.ts`, un formulaire de
+  lancement dans `src/features/projects/launchers/` déclaré dans
+  `modules.ts`, puis un prix dans `settings.credit_costs`. L'onglet
+  n'apparaît qu'une fois les trois en place.
+- Tests : `npm test` et `npx tsc -b` (client),
+  `deno task test` dans `supabase/functions`,
+  `supabase/tests/db/run.sh no-defaults` (base, Postgres local).
