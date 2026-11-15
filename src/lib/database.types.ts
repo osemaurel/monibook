@@ -160,9 +160,86 @@ export type Database = {
           },
         ]
       }
+      ebook_chapters: {
+        Row: {
+          brief: string | null
+          content: string | null
+          created_at: string
+          ebook_id: string
+          id: string
+          position: number
+          status: Database["public"]["Enums"]["ebook_chapter_status"]
+          summary: string | null
+          title: string
+          updated_at: string
+          user_id: string
+          word_count: number
+        }
+        Insert: {
+          brief?: string | null
+          content?: string | null
+          ebook_id: string
+          position: number
+          title: string
+        }
+        Update: {
+          brief?: string | null
+          content?: string | null
+          position?: number
+          title?: string
+        }
+        Relationships: []
+      }
+      ebooks: {
+        Row: {
+          author_name: string | null
+          bible: Json | null
+          coherence_notes: string | null
+          cover_path: string | null
+          created_at: string
+          export_template: string
+          id: string
+          instructions: string | null
+          length: Database["public"]["Enums"]["ebook_length"] | null
+          project_id: string
+          step: number
+          subject: string | null
+          subtitle: string | null
+          summary: string | null
+          template: Database["public"]["Enums"]["ebook_template"] | null
+          title: string | null
+          title_proposals: Json
+          tone: string | null
+          updated_at: string
+          user_id: string
+          written_at: string | null
+        }
+        Insert: {
+          project_id: string
+          step?: number
+          subject?: string | null
+          template?: Database["public"]["Enums"]["ebook_template"] | null
+        }
+        Update: {
+          author_name?: string | null
+          cover_path?: string | null
+          export_template?: string
+          instructions?: string | null
+          length?: Database["public"]["Enums"]["ebook_length"] | null
+          step?: number
+          subject?: string | null
+          subtitle?: string | null
+          summary?: string | null
+          template?: Database["public"]["Enums"]["ebook_template"] | null
+          title?: string | null
+          tone?: string | null
+        }
+        Relationships: []
+      }
       jobs: {
         Row: {
           attempts: number
+          continuation: boolean
           created_at: string
           credits_reserved: number
           error_code: string | null
@@ -185,6 +262,7 @@ export type Database = {
         }
         Insert: {
           attempts?: number
+          continuation?: boolean
           created_at?: string
           credits_reserved: number
           error_code?: string | null
@@ -207,6 +285,7 @@ export type Database = {
         }
         Update: {
           attempts?: number
+          continuation?: boolean
           created_at?: string
           credits_reserved?: number
           error_code?: string | null
@@ -481,6 +560,11 @@ export type Database = {
         Returns: number
       }
       has_access: { Args: never; Returns: boolean }
+      kick_job_runner: { Args: never; Returns: undefined }
+      reorder_ebook_chapters: {
+        Args: { p_chapter_ids: string[]; p_ebook_id: string }
+        Returns: undefined
+      }
       recover_stale_jobs: {
         Args: { p_error_code: string; p_error_message: string }
         Returns: number
@@ -499,6 +583,9 @@ export type Database = {
     Enums: {
       asset_kind: "document" | "image" | "video" | "audio" | "text"
       credit_transaction_kind: "grant" | "reservation" | "release" | "debit"
+      ebook_chapter_status: "pending" | "writing" | "written"
+      ebook_length: "short" | "standard" | "complete"
+      ebook_template: "method_guide" | "step_by_step" | "recipes" | "business_money" | "free"
       job_status: "queued" | "running" | "done" | "failed"
       project_status: "draft" | "in_progress" | "launched" | "archived"
     }

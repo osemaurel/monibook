@@ -12,7 +12,14 @@ const VENDOR_CHUNKS: Record<string, RegExp> = {
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   resolve: {
-    alias: { "@": path.resolve(__dirname, "./src") },
+    alias: [
+      { find: "@", replacement: path.resolve(__dirname, "./src") },
+      // Paged.js print script, loaded only in the PDF window (its exports map hides dist files).
+      {
+        find: /^paged-polyfill(\?.*)?$/,
+        replacement: `${path.resolve(__dirname, "./node_modules/pagedjs/dist/paged.polyfill.min.js")}$1`,
+      },
+    ],
   },
   build: {
     rollupOptions: {

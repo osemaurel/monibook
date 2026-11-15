@@ -6,7 +6,7 @@ import { supabase } from "@/lib/supabase";
 export type Job = Tables<"jobs">;
 
 export const JOB_COLUMNS =
-  "id, project_id, kind, status, progress, step, attempts, max_attempts, credits_reserved, output, error_message, created_at, started_at, finished_at, updated_at, run_after";
+  "id, project_id, kind, status, progress, step, attempts, max_attempts, continuation, credits_reserved, output, error_message, created_at, started_at, finished_at, updated_at, run_after";
 
 export type JobView = Pick<
   Job,
@@ -18,6 +18,7 @@ export type JobView = Pick<
   | "step"
   | "attempts"
   | "max_attempts"
+  | "continuation"
   | "credits_reserved"
   | "output"
   | "error_message"
@@ -50,4 +51,5 @@ export function invalidateJobDependents(queryClient: QueryClient) {
   queryClient.invalidateQueries({ queryKey: queryKeys.balance });
   queryClient.invalidateQueries({ queryKey: queryKeys.creditHistory });
   queryClient.invalidateQueries({ queryKey: queryKeys.projects });
+  queryClient.invalidateQueries({ queryKey: queryKeys.ebook });
 }

@@ -7,6 +7,6 @@
   },
   "tasks": {
     "check": "deno check job-create/index.ts job-run/index.ts tests/",
-    "test": "deno test --allow-env tests/"
+    "test": "SIMULATION_LATENCY_MS=0 deno test --allow-env tests/"
   }
 }

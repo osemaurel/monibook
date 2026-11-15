@@ -21,6 +21,11 @@ function LiveJob({ job }: { job: JobView }) {
 }
 
 export function ModuleTab({ module }: { module: ProjectModule }) {
+  if (module.Tab) return <module.Tab module={module} />;
+  return <GenericModuleTab module={module} />;
+}
+
+function GenericModuleTab({ module }: { module: ProjectModule }) {
   const project = useCurrentProject();
   const jobs = useProjectJobs(project.id);
   const Launcher = module.Launcher!;

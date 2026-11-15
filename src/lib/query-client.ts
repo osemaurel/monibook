@@ -23,4 +23,9 @@ export const queryKeys = {
   projectJobs: (projectId: string) => ["jobs", "project", projectId] as const,
   activeJobs: ["jobs", "active"] as const,
   coverUrl: (path: string) => ["cover-url", path] as const,
+  ebook: ["ebook"] as const,
+  projectEbook: (projectId: string) => ["ebook", "project", projectId] as const,
+  ebookChapters: (ebookId: string) => ["ebook", "chapters", ebookId] as const,
+  coverProposals: (projectId: string) => ["ebook", "covers", projectId] as const,
+  ebookJob: (ebookId: string, key: string) => ["jobs", "ebook", ebookId, key] as const,
 };

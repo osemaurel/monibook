@@ -1,16 +1,22 @@
 import type { TextAdapter } from "./index.ts";
 
 /**
- * Development adapter: answers instantly, costs nothing, calls nothing. Structured requests get a
- * placeholder document that follows the requested JSON Schema, so every flow can run end to end.
+ * Development adapter: costs nothing, calls nothing. Structured requests get a placeholder document
+ * that follows the requested JSON Schema, so every flow can run end to end.
  */
 export function createSimulatedTextAdapter(): TextAdapter {
+  // Chapter-sized answers take a moment, as with a real provider, so progress can be watched.
+  const latencyMs = Number(Deno.env.get("SIMULATION_LATENCY_MS") ?? 1200);
   return {
-    generate(request) {
+    async generate(request) {
+      const schema = request.jsonSchema as { properties?: Record<string, unknown> } | undefined;
+      if (schema?.properties?.content && latencyMs > 0) {
+        await new Promise((resolve) => setTimeout(resolve, latencyMs));
+      }
       const text = request.format === "json" && request.jsonSchema
         ? JSON.stringify(fakeFromSchema(request.jsonSchema, "", { counters: new Map() }))
         : `Texte simulé à partir d'une consigne de ${request.prompt.length} caractères.`;
-      return Promise.resolve({ text, usage: { inputTokens: 0, outputTokens: 0 } });
+      return { text, usage: { inputTokens: 0, outputTokens: 0 } };
     },
   };
 }

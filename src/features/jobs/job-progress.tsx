@@ -16,6 +16,7 @@ const STATUS: Record<JobView["status"], { label: string; variant: "default" | "s
 function stepText(job: JobView): string {
   switch (job.status) {
     case "queued":
+      if (job.continuation) return job.step ? `${job.step} (suite)` : "Suite de la génération…";
       return job.attempts === 0
         ? "En attente de démarrage…"
         : `La tentative ${job.attempts} n'a pas abouti. Nouvelle tentative (${job.attempts + 1} sur ${job.max_attempts}) dans quelques secondes…`;
@@ -42,7 +43,7 @@ export function JobProgress({ job, href, className }: { job: JobView; href?: str
         <Badge variant={status.variant}>{status.label}</Badge>
       </div>
 
-      {(job.status === "running" || job.status === "done") && (
+      {(job.status === "running" || job.status === "done" || job.continuation) && (
         <div className="flex items-center gap-3">
           <Progress value={job.progress} aria-label="Progression" className="h-2" />
           <span className="w-14 shrink-0 text-right text-sm whitespace-nowrap tabular-nums">{job.progress} %</span>

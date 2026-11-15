@@ -15,9 +15,10 @@ const FIELD_REQUIREMENTS: LaunchRequirement[] = [
   { label: "la couverture", met: (p) => !!p.cover_path },
 ];
 
-/** A deliverable counts only once a generation of its kind has actually succeeded. */
-export function deliverableRequirement(label: string, jobKind: string): LaunchRequirement {
-  return { label, met: (p) => (p.done_jobs_by_kind[jobKind] ?? 0) > 0 };
+/** A deliverable counts only once a generation of one of its kinds has actually succeeded. */
+export function deliverableRequirement(label: string, jobKinds: string | string[]): LaunchRequirement {
+  const kinds = Array.isArray(jobKinds) ? jobKinds : [jobKinds];
+  return { label, met: (p) => kinds.some((kind) => (p.done_jobs_by_kind[kind] ?? 0) > 0) };
 }
 
 export function missingForLaunch(project: Project, deliverables: LaunchRequirement[]): string[] {
