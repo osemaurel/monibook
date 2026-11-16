@@ -425,4 +425,30 @@ select test.check(
   (select count(*) from pg_publication_tables where pubname = 'supabase_realtime' and tablename in ('ebooks', 'ebook_chapters')) = 2,
   'ebooks and chapters published to realtime');
 
+-- ===== Admins: named by the service role only, visible to the person concerned, audited
+set role authenticated;
+select set_config('request.jwt.claims', json_build_object('sub', :'A')::text, false);
+select test.expect_error(format($$insert into public.admins (user_id) values (%L)$$, :'A'), 'permission denied');
+select test.check((select count(*) from public.admins) = 0, 'a user cannot name themselves admin');
+reset role;
+set role service_role;
+insert into public.admins (user_id) values (:'B');
+reset role;
+select test.check(
+  (select count(*) from public.audit_log where action = 'admin.granted' and user_id = :'B') = 1,
+  'naming an admin is audited');
+set role authenticated;
+select set_config('request.jwt.claims', json_build_object('sub', :'A')::text, false);
+select test.check((select count(*) from public.admins) = 0, 'a user does not see other admins');
+select set_config('request.jwt.claims', json_build_object('sub', :'B')::text, false);
+select test.check((select count(*) from public.admins) = 1, 'an admin sees their own designation');
+select test.expect_error(format($$delete from public.admins where user_id = %L$$, :'B'), 'permission denied');
+reset role;
+set role service_role;
+delete from public.admins where user_id = :'B';
+reset role;
+select test.check(
+  (select count(*) from public.audit_log where action = 'admin.revoked' and user_id = :'B') = 1,
+  'removing an admin is audited');
+
 \echo ALL TESTS PASSED
