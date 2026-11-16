@@ -35,6 +35,22 @@ $$;
 insert into auth.users (id) values (:'A'), (:'B');
 select test.check((select count(*) from public.profiles) = 2, 'signup trigger creates profiles');
 
+-- The signup name becomes the display name; nothing else is read from the user-written metadata.
+insert into auth.users (id, raw_user_meta_data) values
+  ('00000000-0000-0000-0000-0000000000c1', '{"display_name": "  Awa\n  Diallo ", "has_access": true}'),
+  ('00000000-0000-0000-0000-0000000000c2', jsonb_build_object('display_name', repeat('x', 300))),
+  ('00000000-0000-0000-0000-0000000000c3', '{"display_name": "   "}');
+select test.check(
+  (select display_name = 'Awa Diallo' and not has_access from public.profiles where id = '00000000-0000-0000-0000-0000000000c1'),
+  'signup name is cleaned and access is not taken from metadata');
+select test.check(
+  (select char_length(display_name) = 100 from public.profiles where id = '00000000-0000-0000-0000-0000000000c2'),
+  'an oversized signup name is capped instead of failing the signup');
+select test.check(
+  (select display_name is null from public.profiles where id = '00000000-0000-0000-0000-0000000000c3'),
+  'a blank signup name leaves no display name');
+delete from auth.users where id::text like '00000000-0000-0000-0000-0000000000c%';
+
 set role authenticated;
 select set_config('request.jwt.claims', json_build_object('sub', :'A')::text, false);
 select test.check((select count(*) from public.profiles) = 1, 'A sees only own profile');

@@ -33,6 +33,11 @@ function RouteError() {
 export const router = createBrowserRouter([
   { path: "/connexion", element: <LoginPage /> },
   {
+    path: "/inscription",
+    errorElement: <RouteError />,
+    lazy: async () => ({ Component: (await import("@/features/auth/signup-page")).SignupPage }),
+  },
+  {
     element: <RequireAuth />,
     errorElement: <RouteError />,
     children: [{

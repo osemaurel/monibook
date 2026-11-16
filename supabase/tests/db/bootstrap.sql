@@ -6,7 +6,7 @@ grant anon, authenticated, service_role to postgres;
 grant usage on schema public to anon, authenticated, service_role;
 
 create schema auth;
-create table auth.users (id uuid primary key, email text);
+create table auth.users (id uuid primary key, email text, raw_user_meta_data jsonb);
 create function auth.uid() returns uuid language sql stable as $$
   select coalesce(
     nullif(current_setting('request.jwt.claim.sub', true), ''),

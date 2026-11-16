@@ -24,6 +24,7 @@ export function RequireAuth() {
 /** Access is binary: has_access true or false. There is no plan level to check. */
 export function RequireAccess() {
   const profile = useProfile();
+  const { session } = useAuth();
   if (profile.isPending) return <FullScreenLoader />;
   if (profile.isError) {
     return (
@@ -36,7 +37,10 @@ export function RequireAccess() {
   if (!profile.data.has_access) {
     return (
       <div className="flex min-h-dvh flex-col items-center justify-center gap-3 px-4 text-center">
-        <p className="max-w-sm">Votre accès à Monibook n'est pas actif.</p>
+        <p className="max-w-sm">
+          Votre compte <strong className="[overflow-wrap:anywhere]">{session?.user.email}</strong> est bien créé, mais votre accès à
+          Monibook n'est pas encore actif.
+        </p>
         <Button variant="outline" onClick={() => supabase.auth.signOut()}>Se déconnecter</Button>
       </div>
     );
