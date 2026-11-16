@@ -1,7 +1,8 @@
+import { readFileSync } from "node:fs";
 import path from "node:path";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
-import { defineConfig } from "vite";
+import { defineConfig, type Plugin } from "vite";
 
 // Libraries change rarely: separate chunks stay cached between deployments.
 const VENDOR_CHUNKS: Record<string, RegExp> = {
@@ -9,17 +10,31 @@ const VENDOR_CHUNKS: Record<string, RegExp> = {
   supabase: /node_modules\/@supabase\//,
 };
 
+const pagedVersion = JSON.parse(readFileSync(path.resolve(__dirname, "node_modules/pagedjs/package.json"), "utf8")).version;
+const PAGED_SCRIPT = `vendor/paged-${pagedVersion}.polyfill.min.js`;
+
+/** Ships the Paged.js print script as a static file, loaded only by the PDF print tab. */
+function pagedPrintScript(): Plugin {
+  const source = path.resolve(__dirname, "node_modules/pagedjs/dist/paged.polyfill.min.js");
+  return {
+    name: "paged-print-script",
+    configureServer(server) {
+      server.middlewares.use(`/${PAGED_SCRIPT}`, (_req, res) => {
+        res.setHeader("Content-Type", "text/javascript");
+        res.end(readFileSync(source));
+      });
+    },
+    generateBundle() {
+      this.emitFile({ type: "asset", fileName: PAGED_SCRIPT, source: readFileSync(source) });
+    },
+  };
+}
+
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [react(), tailwindcss(), pagedPrintScript()],
+  define: { "import.meta.env.PAGED_SCRIPT_PATH": JSON.stringify(`/${PAGED_SCRIPT}`) },
   resolve: {
-    alias: [
-      { find: "@", replacement: path.resolve(__dirname, "./src") },
-      // Paged.js print script, loaded only in the PDF window (its exports map hides dist files).
-      {
-        find: /^paged-polyfill(\?.*)?$/,
-        replacement: `${path.resolve(__dirname, "./node_modules/pagedjs/dist/paged.polyfill.min.js")}$1`,
-      },
-    ],
+    alias: { "@": path.resolve(__dirname, "./src") },
   },
   build: {
     rollupOptions: {

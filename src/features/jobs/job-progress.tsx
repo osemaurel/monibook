@@ -36,8 +36,8 @@ export function JobProgress({ job, href, className }: { job: JobView; href?: str
 
   return (
     <div className={cn("flex flex-col gap-2 rounded-lg border p-3", className)} aria-live="polite">
-      <div className="flex items-center justify-between gap-2">
-        <p className="truncate font-medium">
+      <div className="flex items-start justify-between gap-2">
+        <p className="min-w-0 font-medium">
           {href ? <Link to={href} className="underline-offset-4 hover:underline">{jobKindLabel(job.kind)}</Link> : jobKindLabel(job.kind)}
         </p>
         <Badge variant={status.variant}>{status.label}</Badge>

@@ -1,5 +1,5 @@
 import { Check } from "lucide-react";
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { CreditCost } from "@/features/credits/credit-cost";
@@ -101,8 +101,17 @@ export function EbookStepper({ reached, current, onSelect }: {
   current: number;
   onSelect(step: number): void;
 }) {
+  const navRef = useRef<HTMLElement>(null);
+  // On a 360 px screen the pills overflow: keep the current step in view, without scrolling the page.
+  useEffect(() => {
+    const nav = navRef.current;
+    const pill = nav?.querySelector<HTMLElement>('[aria-current="step"]');
+    if (!nav || !pill) return;
+    nav.scrollTo({ left: pill.offsetLeft - (nav.clientWidth - pill.offsetWidth) / 2, behavior: "smooth" });
+  }, [current]);
+
   return (
-    <nav aria-label="Étapes de l'ebook" className="-mx-4 overflow-x-auto px-4">
+    <nav ref={navRef} aria-label="Étapes de l'ebook" className="relative -mx-4 overflow-x-auto px-4">
       <ol className="flex min-w-max gap-1.5">
         {STEPS.map((label, i) => {
           const step = i + 1;

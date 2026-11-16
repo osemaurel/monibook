@@ -1,4 +1,3 @@
-import pagedScriptPath from "paged-polyfill?url";
 import type { ExportTemplate } from "../config";
 import { buildEbookHtml, type PrintableBook } from "./build-html";
 
@@ -27,7 +26,7 @@ export function openPrintWindow(loadBook: () => Promise<PrintableBook>, template
   loadBook()
     .then((book) => {
       const html = buildEbookHtml(book, template, {
-        pagedScriptUrl: new URL(pagedScriptPath, window.location.origin).href,
+        pagedScriptUrl: new URL(import.meta.env.PAGED_SCRIPT_PATH, window.location.origin).href,
         autoPrint: true,
       });
       const url = URL.createObjectURL(new Blob([html], { type: "text/html" }));
