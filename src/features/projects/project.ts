@@ -12,6 +12,10 @@ export interface Project {
   audience: string | null;
   promise: string | null;
   planned_price_fcfa: number | null;
+  /** The offer, shared by every module: up to 6 benefits, a call to action, a guarantee. */
+  benefits: string[];
+  call_to_action: string | null;
+  guarantee: string | null;
   language: ProjectLanguage;
   status: ProjectStatus;
   cover_path: string | null;
@@ -37,7 +41,7 @@ export const LANGUAGE_LABELS: Record<ProjectLanguage, string> = {
 };
 
 export const PROJECT_OVERVIEW_COLUMNS =
-  "id, user_id, name, niche, angle, audience, promise, planned_price_fcfa, language, status, cover_path, created_at, updated_at, done_jobs_by_kind, active_jobs";
+  "id, user_id, name, niche, angle, audience, promise, planned_price_fcfa, benefits, call_to_action, guarantee, language, status, cover_path, created_at, updated_at, done_jobs_by_kind, active_jobs";
 
 export function toProject(row: Tables<"project_overview">): Project {
   if (!row.id || !row.user_id || !row.name || !row.status) throw new Error("Projet incomplet");
@@ -50,6 +54,9 @@ export function toProject(row: Tables<"project_overview">): Project {
     audience: row.audience,
     promise: row.promise,
     planned_price_fcfa: row.planned_price_fcfa,
+    benefits: row.benefits ?? [],
+    call_to_action: row.call_to_action,
+    guarantee: row.guarantee,
     language: row.language === "en" ? "en" : "fr",
     status: row.status,
     cover_path: row.cover_path,

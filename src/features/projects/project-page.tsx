@@ -1,5 +1,5 @@
 import { Pencil } from "lucide-react";
-import { Link } from "react-router";
+import { Link, useSearchParams } from "react-router";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -17,6 +17,9 @@ export function ProjectPage() {
   const project = useCurrentProject();
   const { modules, loading } = useAvailableModules();
   const missing = missingForLaunch(project, useLaunchRequirements());
+  // The open tab lives in the address, so coming back from a module screen reopens it.
+  const [params, setParams] = useSearchParams();
+  const tab = params.get("onglet");
 
   return (
     <div className="flex flex-col gap-5">
@@ -50,7 +53,11 @@ export function ProjectPage() {
 
       {loading && <Skeleton className="h-40 w-full" />}
       {!loading && modules.length > 0 && (
-        <Tabs defaultValue={modules[0].id} className="gap-4">
+        <Tabs
+          value={modules.some((m) => m.id === tab) ? tab! : modules[0].id}
+          onValueChange={(value) => setParams({ onglet: value }, { replace: true })}
+          className="gap-4"
+        >
           <TabsList className="w-full justify-start overflow-x-auto">
             {modules.map((m) => <TabsTrigger key={m.id} value={m.id}>{m.tabLabel}</TabsTrigger>)}
           </TabsList>

@@ -111,6 +111,45 @@ export type Database = {
         }
         Relationships: []
       }
+      copy_texts: {
+        Row: {
+          angle: Database["public"]["Enums"]["copy_angle"] | null
+          content: string
+          created_at: string
+          id: string
+          job_id: string | null
+          project_id: string
+          title: string
+          type: Database["public"]["Enums"]["copy_type"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          angle?: Database["public"]["Enums"]["copy_angle"] | null
+          content: string
+          created_at?: string
+          id?: string
+          job_id?: string | null
+          project_id: string
+          title: string
+          type: Database["public"]["Enums"]["copy_type"]
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          angle?: Database["public"]["Enums"]["copy_angle"] | null
+          content?: string
+          created_at?: string
+          id?: string
+          job_id?: string | null
+          project_id?: string
+          title?: string
+          type?: Database["public"]["Enums"]["copy_type"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       credit_transactions: {
         Row: {
           amount: number
@@ -351,9 +390,12 @@ export type Database = {
         Row: {
           angle: string | null
           audience: string | null
+          benefits: string[]
+          call_to_action: string | null
           cover_path: string | null
           created_at: string
           deleted_at: string | null
+          guarantee: string | null
           id: string
           language: string
           name: string
@@ -367,9 +409,12 @@ export type Database = {
         Insert: {
           angle?: string | null
           audience?: string | null
+          benefits?: string[]
+          call_to_action?: string | null
           cover_path?: string | null
           created_at?: string
           deleted_at?: string | null
+          guarantee?: string | null
           id?: string
           language?: string
           name: string
@@ -383,9 +428,12 @@ export type Database = {
         Update: {
           angle?: string | null
           audience?: string | null
+          benefits?: string[]
+          call_to_action?: string | null
           cover_path?: string | null
           created_at?: string
           deleted_at?: string | null
+          guarantee?: string | null
           id?: string
           language?: string
           name?: string
@@ -486,9 +534,12 @@ export type Database = {
           active_jobs: number | null
           angle: string | null
           audience: string | null
+          benefits: string[] | null
+          call_to_action: string | null
           cover_path: string | null
           created_at: string | null
           done_jobs_by_kind: Json | null
+          guarantee: string | null
           id: string | null
           language: string | null
           name: string | null
@@ -582,6 +633,16 @@ export type Database = {
     }
     Enums: {
       asset_kind: "document" | "image" | "video" | "audio" | "text"
+      copy_angle: "emotional" | "numbers" | "testimonial" | "urgency"
+      copy_type:
+        | "hooks"
+        | "facebook_short"
+        | "facebook_long"
+        | "sales_page"
+        | "email_sequence"
+        | "product_description"
+        | "social_captions"
+        | "free"
       credit_transaction_kind: "grant" | "reservation" | "release" | "debit"
       ebook_chapter_status: "pending" | "writing" | "written"
       ebook_length: "short" | "standard" | "complete"

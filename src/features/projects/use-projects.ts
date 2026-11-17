@@ -58,8 +58,24 @@ export interface ProjectFields {
   audience: string | null;
   promise: string | null;
   planned_price_fcfa: number | null;
+  benefits: string[];
+  call_to_action: string | null;
+  guarantee: string | null;
   language: ProjectLanguage;
   status: ProjectStatus;
+}
+
+/** Fills the project from another screen (e.g. the visuals form); only the given fields change. */
+export function useUpdateProjectFields() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (args: { projectId: string; patch: Partial<Omit<ProjectFields, "name" | "status" | "language">> }) => {
+      if (Object.keys(args.patch).length === 0) return;
+      const { error } = await supabase.from("projects").update(args.patch).eq("id", args.projectId);
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.projects }),
+  });
 }
 
 export type CoverChange = { type: "keep" } | { type: "replace"; file: File } | { type: "remove" };

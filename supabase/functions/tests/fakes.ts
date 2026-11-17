@@ -1,4 +1,5 @@
 import type { ChapterRecord, EbookRecord, EbookStore, FileStore } from "../_shared/ebook/types.ts";
+import type { ProjectContext, ProjectStore } from "../_shared/projects/types.ts";
 import type { AssetDraft, DataAccess } from "../_shared/jobs/types.ts";
 import type { JobError } from "../_shared/jobs/errors.ts";
 import type { JobStore } from "../_shared/jobs/runner.ts";
@@ -109,22 +110,66 @@ export function memoryEbookStore(ebook: EbookRecord, chapters: ChapterRecord[] =
   return store;
 }
 
-export function memoryFiles(): FileStore & { files: Map<string, BinaryFile> } {
+export function memoryFiles(): FileStore & { files: Map<string, BinaryFile>; uploads: string[] } {
   const files = new Map<string, BinaryFile>();
+  const uploads: string[] = [];
   return {
     files,
+    uploads,
     upload(path, file) {
       files.set(path, file);
+      uploads.push(path);
       return Promise.resolve(file.data.byteLength);
     },
+    download: (path) => Promise.resolve(files.get(path) ?? null),
+    list(folder) {
+      const prefix = `${folder}/`;
+      const listed = [...files.entries()]
+        .filter(([path]) => path.startsWith(prefix) && !path.slice(prefix.length).includes("/"))
+        .map(([path, file]) => ({ name: path.slice(prefix.length), sizeBytes: file.data.byteLength }))
+        .sort((a, b) => a.name.localeCompare(b.name));
+      return Promise.resolve(listed);
+    },
   };
+}
+
+export function sampleProject(overrides: Partial<ProjectContext> = {}): ProjectContext {
+  return {
+    id: PROJECT,
+    userId: USER,
+    name: "Cuisine express",
+    niche: "Cuisine rapide",
+    angle: "Recettes en 15 minutes",
+    audience: "Étudiants et jeunes actifs",
+    promise: "Cuisinez sain en 15 minutes par jour",
+    priceFcfa: 1500,
+    language: "fr",
+    benefits: ["Des repas prêts en 15 minutes", "Moins de 2 000 FCFA par jour", "Des courses simples"],
+    callToAction: "Je commande",
+    guarantee: "Satisfait ou remboursé pendant 7 jours",
+    coverPath: null,
+    product: {
+      title: "Cuisiner sain en 15 minutes",
+      subtitle: "Le guide des étudiants pressés",
+      author: "Awa Diallo",
+      summary: "Un guide pratique pour cuisiner vite et bien.",
+      chapterTitles: ["Les bases", "Les courses", "Les recettes"],
+      coverPath: `${USER}/${PROJECT}/ebook/covers/cover-1.svg`,
+    },
+    ...overrides,
+  };
+}
+
+export function memoryProjects(...projects: ProjectContext[]): ProjectStore {
+  return { getContext: (id) => Promise.resolve(structuredClone(projects.find((p) => p.id === id) ?? null)) };
 }
 
 export function dataAccess(
   ebooks: EbookStore = memoryEbookStore(sampleEbook()),
   files = memoryFiles(),
+  projects: ProjectStore = memoryProjects(sampleProject()),
 ): DataAccess {
-  return { ebooks, files };
+  return { ebooks, files, projects };
 }
 
 export interface RecordedJob {

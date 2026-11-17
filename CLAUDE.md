@@ -106,8 +106,19 @@ Ces règles ne se négocient pas. Un code qui en viole une est un bug.
 - Ajouter un module de génération : un exécuteur dans
   `_shared/jobs/kinds/` déclaré dans `registry.ts`, un formulaire de
   lancement dans `src/features/projects/launchers/` déclaré dans
-  `modules.ts`, puis un prix dans `settings.credit_costs`. L'onglet
-  n'apparaît qu'une fois les trois en place.
+  `modules.ts` (ou un onglet complet `Tab`), puis un prix dans
+  `settings.credit_costs`. L'onglet n'apparaît qu'une fois les trois en
+  place.
+- Contexte projet : les exécuteurs lisent le projet (offre comprise :
+  bénéfices, appel à l'action, garantie) et l'ebook via
+  `_shared/projects/context.ts` (`loadOwnedProject`,
+  `renderProjectBrief`). Un formulaire pré-remplit depuis le projet et
+  n'y enregistre que ce qui manquait.
+- Visuels : un lot `ad_visuals` = 4 concepts, chaque visuel stocké dès
+  qu'il existe sous `{user}/{projet}/visuals/{job}/` ; les actifs sont
+  déclarés à la fin, avec le débit. Textes : un type de job `copy_*` par
+  type de texte ; les variations restent dans la sortie du job, le texte
+  choisi est enregistré dans `copy_texts`.
 - Tests : `npm test` et `npx tsc -b` (client),
   `deno task test` dans `supabase/functions`,
   `supabase/tests/db/run.sh no-defaults` (base, Postgres local).

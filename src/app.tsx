@@ -76,6 +76,14 @@ export const router = createBrowserRouter([
                 lazy: async () => ({ Component: (await import("@/features/ebook/ebook-page")).EbookPage }),
               },
               {
+                path: "visuels",
+                lazy: async () => ({ Component: (await import("@/features/visuals/visuals-page")).VisualsPage }),
+              },
+              {
+                path: "textes",
+                lazy: async () => ({ Component: (await import("@/features/copy/copy-page")).CopyPage }),
+              },
+              {
                 path: "generations/:jobId",
                 lazy: async () => ({ Component: (await import("@/features/jobs/job-page")).JobPage }),
               },

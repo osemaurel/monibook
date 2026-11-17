@@ -2,6 +2,8 @@ import { ebookChapterRewrite, ebookCover } from "./kinds/ebook/cover-and-rewrite
 import { ebookOutline, ebookSummary, ebookTitles } from "./kinds/ebook/proposals.ts";
 import { ebookWrite } from "./kinds/ebook/write.ts";
 import { engineTest } from "./kinds/engine-test.ts";
+import { COPY_JOB_KINDS } from "./kinds/copy.ts";
+import { adVisuals } from "./kinds/visuals.ts";
 import type { JobKindDefinition } from "./types.ts";
 
 // A kind can only be launched if it is listed here AND priced in settings.credit_costs.
@@ -16,4 +18,6 @@ export const JOB_KINDS: Record<string, JobKindDefinition<any>> = {
   ebook_write_complete: ebookWrite,
   ebook_cover: ebookCover,
   ebook_chapter_rewrite: ebookChapterRewrite,
+  ad_visuals: adVisuals,
+  ...COPY_JOB_KINDS,
 };

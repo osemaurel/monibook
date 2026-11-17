@@ -72,7 +72,17 @@ export interface EbookStore {
   finishWriting(ebookId: string, coherenceNotes: string): Promise<void>;
 }
 
+export interface StoredFile {
+  /** Name inside the listed folder, e.g. "2.png". */
+  name: string;
+  sizeBytes: number;
+}
+
 export interface FileStore {
   /** Stores a generated file in the project's storage and returns its size in bytes. */
   upload(path: string, file: BinaryFile): Promise<number>;
+  /** Reads a stored file; null when it does not exist. */
+  download(path: string): Promise<BinaryFile | null>;
+  /** Files directly inside a folder (no trailing slash), sorted by name. */
+  list(folder: string): Promise<StoredFile[]>;
 }

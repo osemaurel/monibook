@@ -284,6 +284,44 @@ select test.expect_error(format($$insert into storage.objects (bucket_id, name) 
 delete from storage.objects where name = :'A' || '/' || :'P2' || '/cover/c1.webp';
 select test.check((select count(*) from storage.objects where name like '%/cover/c1.webp') = 0, 'owner deletes own cover');
 
+-- Offer of the project (phase 4): read by every module through the overview
+update public.projects
+set benefits = array['Des repas prêts en 15 minutes', 'Moins de 2 000 FCFA par jour'],
+    call_to_action = 'Je commande',
+    guarantee = 'Satisfait ou remboursé pendant 7 jours'
+where id = :'P2';
+select test.check(
+  (select cardinality(benefits) = 2 and call_to_action = 'Je commande' and guarantee like 'Satisfait%'
+   from public.project_overview where id = :'P2'),
+  'offer saved on the project and read through the overview');
+select test.expect_error(format($$update public.projects set benefits = array['a','b','c','d','e','f','g'] where id = %L$$, :'P2'), 'projects_benefits_check');
+select test.expect_error(format($$update public.projects set benefits = array['ok', '   '] where id = %L$$, :'P2'), 'projects_benefits_check');
+select test.expect_error(format($$update public.projects set call_to_action = ' ' where id = %L$$, :'P2'), 'projects_call_to_action_check');
+
+-- Visual reference upload policy
+insert into storage.objects (bucket_id, name) values ('assets', :'A' || '/' || :'P2' || '/visuals/references/r1.jpg');
+select test.check((select count(*) from storage.objects where name like '%/visuals/references/r1.jpg') = 1, 'owner uploads a visual reference');
+select test.expect_error(format($$insert into storage.objects (bucket_id, name) values ('assets', '%s/%s/visuals/x/1.png')$$, :'A', :'P2'), 'row-level security');
+select test.expect_error(format($$insert into storage.objects (bucket_id, name) values ('assets', '%s/%s/visuals/references/r.svg')$$, :'A', :'P2'), 'row-level security');
+select test.expect_error(format($$insert into storage.objects (bucket_id, name) values ('assets', '%s/%s/visuals/references/r.jpg')$$, :'A', :'PB'), 'row-level security');
+
+-- Saved copy
+insert into public.copy_texts (project_id, type, angle, title, content)
+values (:'P2', 'facebook_short', 'emotional', 'Texte Facebook court · émotionnel', 'Bonjour');
+select id as "C1" from public.copy_texts where project_id = :'P2' \gset
+select test.check((select user_id = :'A' from public.copy_texts where id = :'C1'), 'saved copy belongs to its author');
+update public.copy_texts set content = 'Bonjour à tous', title = 'Ma version' where id = :'C1';
+select test.check((select content = 'Bonjour à tous' from public.copy_texts where id = :'C1'), 'saved copy can be edited');
+select test.expect_error(format($$update public.copy_texts set type = 'hooks' where id = %L$$, :'C1'), 'permission denied');
+select test.expect_error(format($$insert into public.copy_texts (project_id, type, title, content) values (%L, 'free', 't', 'c')$$, :'PB'), 'row-level security');
+select test.expect_error(format($$insert into public.copy_texts (project_id, type, title, content) values (%L, 'free', '  ', 'c')$$, :'P2'), 'copy_texts_title_check');
+select test.expect_error(format($$insert into public.copy_texts (project_id, job_id, type, title, content) values (%L, %L, 'free', 't', 'c')$$, :'P2', :'J1'), 'foreign key');
+select set_config('request.jwt.claims', json_build_object('sub', :'B')::text, false);
+select test.check((select count(*) from public.copy_texts) = 0, 'another user does not see the copy');
+select set_config('request.jwt.claims', json_build_object('sub', :'A')::text, false);
+delete from public.copy_texts where id = :'C1';
+select test.check((select count(*) from public.copy_texts where id = :'C1') = 0, 'saved copy can be deleted');
+
 -- Overview counters come from real rows
 select test.check(
   (select active_jobs = 1 and (done_jobs_by_kind ->> 'engine_test')::int = 1 from public.project_overview where id = :'P'),
@@ -450,5 +488,10 @@ reset role;
 select test.check(
   (select count(*) from public.audit_log where action = 'admin.revoked' and user_id = :'B') = 1,
   'removing an admin is audited');
+
+select test.check(
+  (select (value ->> 'ad_visuals')::int = 6 and (value ->> 'copy_sales_page')::int = 4 and (value ->> 'copy_free')::int = 2
+   from public.settings where key = 'credit_costs'),
+  'visuals and copy generations are priced');
 
 \echo ALL TESTS PASSED

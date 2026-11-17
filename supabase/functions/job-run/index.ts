@@ -1,6 +1,7 @@
 import { JOB_KINDS } from "../_shared/jobs/registry.ts";
 import { runJob } from "../_shared/jobs/runner.ts";
 import { createSupabaseEbookStore, createSupabaseFileStore } from "../_shared/ebook/store.ts";
+import { createSupabaseProjectStore } from "../_shared/projects/store.ts";
 import {
   claimJobs,
   createSupabaseJobStore,
@@ -17,7 +18,11 @@ declare const EdgeRuntime: { waitUntil(work: Promise<unknown>): void };
 
 const admin = createAdminClient();
 const store = createSupabaseJobStore(admin);
-const data = { ebooks: createSupabaseEbookStore(admin), files: createSupabaseFileStore(admin) };
+const data = {
+  ebooks: createSupabaseEbookStore(admin),
+  files: createSupabaseFileStore(admin),
+  projects: createSupabaseProjectStore(admin),
+};
 
 Deno.serve(createJobRunHandler({
   verifySecret: (secret) => verifyRunnerSecret(admin, secret),

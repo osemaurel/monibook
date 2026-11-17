@@ -82,5 +82,24 @@ export function createSupabaseFileStore(admin: SupabaseClient): FileStore {
       check(error, "upload file");
       return file.data.byteLength;
     },
+    async download(path) {
+      const { data, error } = await admin.storage.from("assets").download(path);
+      if (error || !data) return null;
+      return {
+        data: new Uint8Array(await data.arrayBuffer()),
+        mimeType: data.type || "application/octet-stream",
+      };
+    },
+    async list(folder) {
+      const { data, error } = await admin.storage.from("assets").list(folder, {
+        limit: 100,
+        sortBy: { column: "name", order: "asc" },
+      });
+      check(error, "list files");
+      // Folders come back with a null id; only files are kept.
+      return (data ?? [])
+        .filter((item) => item.id !== null)
+        .map((item) => ({ name: item.name, sizeBytes: Number(item.metadata?.size ?? 0) }));
+    },
   };
 }

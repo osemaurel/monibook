@@ -1,5 +1,6 @@
 import { z } from "../deps.ts";
 import type { EbookStore, FileStore } from "../ebook/types.ts";
+import type { ProjectStore } from "../projects/types.ts";
 import type { Services } from "../services/index.ts";
 
 export const ClaimedJob = z.object({
@@ -14,6 +15,7 @@ export type ClaimedJob = z.infer<typeof ClaimedJob>;
 
 export interface AssetDraft {
   kind: "document" | "image" | "video" | "audio" | "text";
+  /** With a stored file: describes it (format, variation…). Without: the asset itself. */
   title?: string;
   storage_path?: string;
   mime_type?: string;
@@ -30,6 +32,7 @@ export type JobResult =
 export interface DataAccess {
   ebooks: EbookStore;
   files: FileStore;
+  projects: ProjectStore;
 }
 
 export interface JobContext {
@@ -55,3 +58,6 @@ export interface JobKindDefinition<Input> {
 export function defineJobKind<Input>(definition: JobKindDefinition<Input>): JobKindDefinition<Input> {
   return definition;
 }
+
+// deno-lint-ignore no-explicit-any
+export type JobDefinitionAny = JobKindDefinition<any>;

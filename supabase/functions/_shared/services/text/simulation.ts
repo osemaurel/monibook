@@ -71,10 +71,13 @@ function fakeString(key: string, schema: Schema, state: FakeState): string {
   let value: string;
   if (name === "content") value = chapterContent(state);
   else if (name.includes("title")) value = `Titre simulé ${next(state, "title")}`;
+  else if (name.includes("hashtag")) value = `#astuce${next(state, "hashtag")}`;
   else if (name.includes("term")) value = `Notion ${next(state, "term")}`;
   else if (name.includes("summary") || name.includes("brief") || name.includes("profile")) {
     value = sentences(state, 4);
   } else value = sentences(state, 2);
+  const min = typeof schema.minLength === "number" ? schema.minLength : 0;
+  while (value.length < min) value += " " + sentences(state, 2);
   const max = typeof schema.maxLength === "number" ? schema.maxLength : undefined;
   return max ? value.slice(0, max) : value;
 }

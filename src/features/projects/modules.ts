@@ -1,7 +1,11 @@
 import type { ComponentType } from "react";
+import { COPY_JOB_KINDS, COPY_TYPES } from "@/features/copy/config";
+import { CopyTab } from "@/features/copy/copy-tab";
 import { useCreditCosts } from "@/features/credits/use-credits";
 import { EbookTab } from "@/features/ebook/ebook-tab";
 import { WRITE_KINDS } from "@/features/ebook/config";
+import { VISUALS_JOB_KIND } from "@/features/visuals/config";
+import { VisualsTab } from "@/features/visuals/visuals-tab";
 import { EngineTestLauncher } from "./launchers/engine-test-launcher";
 import { deliverableRequirement, type LaunchRequirement } from "./readiness";
 
@@ -32,9 +36,11 @@ export const PROJECT_MODULES: ProjectModule[] = [
   {
     id: "visuals",
     tabLabel: "Visuels",
-    jobKind: "ad_visuals",
-    produces: "Des visuels publicitaires prêts à publier, aux formats carré, story et bannière.",
-    launchRequirement: deliverableRequirement("les visuels", "ad_visuals"),
+    jobKind: VISUALS_JOB_KIND,
+    produces:
+      "Des visuels publicitaires par lots de 4, au format carré ou vertical, tirés de votre projet et téléchargeables en haute résolution.",
+    launchRequirement: deliverableRequirement("les visuels", VISUALS_JOB_KIND),
+    Tab: VisualsTab,
   },
   {
     id: "videos",
@@ -45,9 +51,11 @@ export const PROJECT_MODULES: ProjectModule[] = [
   {
     id: "texts",
     tabLabel: "Textes",
-    jobKind: "sales_copy",
-    produces: "Les textes de vente : page de vente, accroches publicitaires et descriptions du produit.",
-    launchRequirement: deliverableRequirement("les textes de vente", "sales_copy"),
+    jobKind: COPY_TYPES[0].kind,
+    produces:
+      "Les textes de vente : accroches, publicités Facebook, page de vente, e-mails de lancement, description et légendes, chacun en plusieurs angles.",
+    launchRequirement: deliverableRequirement("les textes de vente", COPY_JOB_KINDS),
+    Tab: CopyTab,
   },
   {
     id: "competition",

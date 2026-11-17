@@ -9,6 +9,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { formatFcfa } from "@/lib/format";
 import { ACCEPTED_COVER_TYPES, MAX_COVER_INPUT_BYTES } from "./cover";
+import {
+  benefitsError,
+  benefitsToText,
+  CALL_TO_ACTION_MAX_LENGTH,
+  GUARANTEE_MAX_LENGTH,
+  MAX_BENEFITS,
+  parseBenefits,
+} from "./offer";
 import { LANGUAGE_LABELS, PROJECT_STATUS_LABELS, type Project, type ProjectLanguage, type ProjectStatus } from "./project";
 import { ProjectCover } from "./project-cover";
 import { type CoverChange, type ProjectFields, type SaveProjectResult, useSaveProject } from "./use-projects";
@@ -28,6 +36,12 @@ const FormSchema = z.object({
     .trim()
     .refine((v) => /^\d*$/.test(digitsOnly(v)), "Indiquez un montant entier en FCFA, sans décimale.")
     .refine((v) => Number(digitsOnly(v) || 0) <= MAX_PRICE_FCFA, "Ce montant est trop élevé."),
+  benefits: z.string().superRefine((value, ctx) => {
+    const error = benefitsError(value);
+    if (error) ctx.addIssue({ code: "custom", message: error });
+  }),
+  call_to_action: optionalText(CALL_TO_ACTION_MAX_LENGTH),
+  guarantee: optionalText(GUARANTEE_MAX_LENGTH),
   language: z.enum(["fr", "en"]),
   status: z.enum(["draft", "in_progress", "launched", "archived"]),
 });
@@ -43,6 +57,9 @@ function toFields(values: FormValues): ProjectFields {
     audience: orNull(values.audience),
     promise: orNull(values.promise),
     planned_price_fcfa: price === "" ? null : Number(price),
+    benefits: parseBenefits(values.benefits),
+    call_to_action: orNull(values.call_to_action),
+    guarantee: orNull(values.guarantee),
     language: values.language as ProjectLanguage,
     status: values.status as ProjectStatus,
   };
@@ -56,6 +73,9 @@ function defaults(project?: Project): FormValues {
     audience: project?.audience ?? "",
     promise: project?.promise ?? "",
     price: project?.planned_price_fcfa?.toString() ?? "",
+    benefits: benefitsToText(project?.benefits ?? []),
+    call_to_action: project?.call_to_action ?? "",
+    guarantee: project?.guarantee ?? "",
     language: project?.language ?? "fr",
     status: project?.status ?? "draft",
   };
@@ -138,6 +158,36 @@ export function ProjectForm({ project, submitLabel, onSaved }: {
           <Input id="price" inputMode="numeric" placeholder="Ex. : 5000" {...form.register("price")} />
           {!errors.price && /^\d+$/.test(price) && <FieldDescription>Soit {formatFcfa(Number(price))}</FieldDescription>}
           <FieldError errors={[errors.price]} />
+        </Field>
+
+        <div className="flex flex-col gap-1 border-t pt-4">
+          <p className="font-medium">Offre</p>
+          <p className="text-sm text-muted-foreground">Reprise par les visuels et les textes de vente.</p>
+        </div>
+
+        <Field data-invalid={!!errors.benefits}>
+          <FieldLabel htmlFor="benefits">Bénéfices</FieldLabel>
+          <Textarea
+            id="benefits"
+            rows={4}
+            placeholder={"Un bénéfice par ligne, par exemple :\nDes repas prêts en 15 minutes\nMoins de 2 000 FCFA par jour"}
+            aria-invalid={!!errors.benefits}
+            {...form.register("benefits")}
+          />
+          <FieldDescription>Un par ligne, {MAX_BENEFITS} au maximum.</FieldDescription>
+          <FieldError errors={[errors.benefits]} />
+        </Field>
+
+        <Field data-invalid={!!errors.call_to_action}>
+          <FieldLabel htmlFor="call_to_action">Appel à l'action</FieldLabel>
+          <Input id="call_to_action" placeholder="Ex. : Je commande maintenant" {...form.register("call_to_action")} />
+          <FieldError errors={[errors.call_to_action]} />
+        </Field>
+
+        <Field data-invalid={!!errors.guarantee}>
+          <FieldLabel htmlFor="guarantee">Garantie</FieldLabel>
+          <Input id="guarantee" placeholder="Ex. : Satisfait ou remboursé pendant 7 jours" {...form.register("guarantee")} />
+          <FieldError errors={[errors.guarantee]} />
         </Field>
 
         <div className="grid grid-cols-2 gap-3">
